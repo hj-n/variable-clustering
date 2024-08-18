@@ -1,0 +1,149 @@
+
+from tqdm import tqdm
+
+
+import numpy as np
+import os, json
+import time
+
+from scorer.clustering_scorer import *
+
+import warnings
+np.warnings = warnings
+
+warnings.filterwarnings("ignore")
+
+
+ALGORITHM = "agglo_single"
+MEASURE = "ami"
+
+GROUND_TRUTH_PATH = "./data/preprocessed/"
+SPLOTS_PATH = "./data/splots/"
+
+
+scorers_dict = {
+	"hdbscan": ["HDBSCAN", hdbscan_scorer],
+	"dbscan": ["DBSCAN", dbscan_scorer],
+	"kmeans": ["K-Means", kmeans_scorer],
+	# "kmedoid": ["K-Medoid", kmedioid_scorer],
+	"xmeans": ["X-Means", xmeans_scorer],
+	"birch": ["Birch", birch_scorer],
+	"agglo_complete": ["Agglomerative (Complete)", agglo_complete_scorer],
+	"agglo_average": ["Agglomerative (Average)", agglo_average_scorer],
+	"agglo_single": ["Agglomerative (Single)", agglo_single_scorer]
+}
+
+
+
+ext_measures_dict = {
+	"ami": ["Adjusted Mutual Information", ami_scorer],
+	"arand": ["Adjusted Rand Index", arand_scorer],
+	"vm": ["V-Measure", vm_scorer],
+	"nmi": ["Normalized Mutual Information", nmi_scorer]
+}
+
+clustering_scorer = scorers_dict[ALGORITHM][1]
+ext_measure_scorer = ext_measures_dict[MEASURE][1]
+
+print("Running " + scorers_dict[ALGORITHM][0] + " with " + ext_measures_dict[MEASURE][0] + "...")
+
+
+for file in tqdm(os.listdir(GROUND_TRUTH_PATH)):
+	with open(GROUND_TRUTH_PATH + file) as f:
+		ground_truth_clustering_list = json.load(f)
+	with open(SPLOTS_PATH + file) as f:
+		splot = json.load(f)
+	
+	scores = []
+	for clustering in tqdm(ground_truth_clustering_list):
+		score = clustering_scorer(splot, clustering, ext_measure_scorer)
+		scores.append(score)
+	
+	with open(f"./data/results/{ALGORITHM}_{MEASURE}_{file}_score.json", "w") as f:
+		json.dump(scores, f)
+
+
+
+
+
+
+# parser = argparse.ArgumentParser(description="Obtain the ground truth CLM scores of the datasets using clustering algorithms", formatter_class=argparse.RawTextHelpFormatter)
+# parser.add_argument("--clustering", "-c", type=str, default="all",
+# help=f"""run the specified clustering algorithm, or all of them if 'all'
+# supported clustering algorithms: {list(scorers_dict.keys())}"""
+# )
+# parser.add_argument("--external-measure", "-e", type=str, default="ami", 
+# help=f"""select the external measure to use
+# supported external measures: {list(ext_measures_dict.keys())}"""
+# )
+# parser.add_argument("--time", "-t", action="store_true", help="run time analysis")
+# parser.add_argument("--subspace", "-s", default="false", help="use subspace making improved dataset")
+
+# args = parser.parse_args()
+
+# clustering_names = []
+# clustering_scores = []
+# clustering_abbs = []
+# if args.clustering == "all":
+# 	for name, scorer in scorers_dict.items():
+# 		clustering_names.append(scorer[0])
+# 		clustering_scores.append(scorer[1])
+# 		clustering_abbs.append(name)
+# else:
+# 	clustering_names.append(scorers_dict[args.clustering][0])
+# 	clustering_scores.append(scorers_dict[args.clustering][1])
+# 	clustering_abbs.append(args.clustering)
+
+
+
+# ext_measure_name = ext_measures_dict[args.external_measure][0]
+# ext_measure_scorer = ext_measures_dict[args.external_measure][1]
+# ext_measure_abb = args.external_measure
+
+
+# def run(
+# 	clustering_scorer, clustering_name, clustering_abb,
+# 	ext_measure_scorer, ext_measure_name, ext_measure_abb
+# ):
+# 	scores = []
+# 	times = []
+# 	print("Running " + clustering_name + " with " + ext_measure_name + "...")
+# 	for i, dataset in enumerate(tqdm(DATASET_LIST)):
+# 		data, labels = read_dataset_by_path(f"./data/compressed/{dataset}/")
+# 		data_max = np.max(data)
+# 		data_min = np.min(data)
+# 		data_norm = np.abs(data_max) if np.abs(data_max) > np.abs(data_min) else np.abs(data_min)
+
+# 		data = data / data_norm
+
+# 		if args.subspace == "true":
+# 			data = data * SUBSPACE_WEIGHT[i]
+		
+# 		start = time.time()
+# 		score = clustering_scorer(data, labels, ext_measure_scorer)
+# 		end = time.time()
+# 		scores.append(score)
+# 		times.append(end - start)
+
+	
+# 	print("saving files...")
+# 	if args.subspace == "true":
+# 		with open(f"./results/clusterings/{clustering_abb}_{ext_measure_abb}_score_improved.json", "w") as file:
+# 			json.dump(scores, file)
+# 	else:
+
+# 		with open(f"./results/clusterings/{clustering_abb}_{ext_measure_abb}_score.json", "w") as file:
+# 			json.dump(scores, file)
+# 	if args.time:
+# 		with open(f"./results/clusterings/{clustering_abb}_{ext_measure_abb}_time.json", "w") as file:
+# 			json.dump(times, file)
+	
+# 	print("finished!!")
+
+
+
+# for i, clustering_name in enumerate(clustering_names):
+# 	run(
+# 		clustering_scores[i], clustering_name, clustering_abbs[i],
+# 		ext_measure_scorer, ext_measure_name, ext_measure_abb
+# 	)
